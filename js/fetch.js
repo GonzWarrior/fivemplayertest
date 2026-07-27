@@ -90,6 +90,7 @@ export const fetchServer = (serverId) => {
 				}
 
 				const players = formatPlayers(json.Data.players);
+				warnIfNamesAreAnonymized(players);
 
 				// Only update if players changed
 				if (!arraysEqual(currentPlayers, players)) {
@@ -111,6 +112,32 @@ export const fetchServer = (serverId) => {
 		console.error('Error in fetchServer:', error);
 		showNotification('An unexpected error occurred', 'error');
 		showLoader(false);
+	}
+};
+
+// Some servers configure their "playernames" resource (via the playernames_template /
+// playernames_svTemplate convars) to report the exact same generic string — "Anon",
+// "Player", their own server name, etc. — for every single player, usually on purpose to
+// hide real identities on roleplay servers. That value comes straight from the server, so
+// there's nothing to "unmask" client-side; the most useful thing this page can do is make
+// it obvious that's what's happening instead of leaving it looking like a display bug.
+const warnIfNamesAreAnonymized = (players) => {
+	if (!players.length) return;
+
+	const counts = new Map();
+	players.forEach((player) => {
+		const key = player.name.toLowerCase();
+		counts.set(key, (counts.get(key) || 0) + 1);
+	});
+
+	const [mostCommonName, mostCommonCount] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+
+	if (players.length >= 3 && mostCommonCount / players.length >= 0.8) {
+		showNotification(
+			`This server reports "${mostCommonName}" as the name for most/all players — that's sent by the server itself (privacy setting), not something this page can reveal`,
+			'warning',
+			8000
+		);
 	}
 };
 
@@ -282,12 +309,12 @@ const showLoader = (isVisible) => {
 };
 
 // Notification system
-const showNotification = (message, type) => {
+const showNotification = (message, type, duration = 3000) => {
 	if (window.createNotification) {
 		window.createNotification({
 			message,
 			type,
-			duration: 3000,
+			duration,
 		});
 	}
 };
