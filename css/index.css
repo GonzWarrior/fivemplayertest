@@ -96,6 +96,7 @@ input {
 	display: flex;
 	gap: 1rem;
 	padding: 24px;
+	position: relative;
 }
 
 .icon {
@@ -361,6 +362,48 @@ table tr:nth-child(odd) {
 	padding: 16px;
 	color: var(--text-secondary);
 	text-align: center;
+}
+
+#server-search-panel {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	z-index: 100;
+	background: var(--wrapper-bg);
+	border: 1px solid var(--border-color);
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+	width: 320px;
+	max-height: 420px;
+	overflow-y: auto;
+	display: none;
+	border-radius: 4px;
+	margin-top: 8px;
+}
+
+#server-search-panel.show {
+	display: block;
+}
+
+#server-search-input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 8px 12px;
+	margin-bottom: 8px;
+	background: var(--icon-bg);
+	border: 1px solid var(--border-color);
+	border-radius: 4px;
+	color: var(--text-color);
+	font-family: 'Mulish', sans-serif;
+	font-size: 14px;
+}
+
+.favorite-item .server-search-count {
+	margin-left: auto;
+	padding-left: 8px;
+	flex-shrink: 0;
+	font-size: 12px;
+	color: var(--text-secondary);
+	white-space: nowrap;
 }
 
 /* Notification System */

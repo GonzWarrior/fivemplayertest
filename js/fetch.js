@@ -34,7 +34,7 @@ const fetchWithTimeout = async (url, options, timeout) => {
 // instead of walking through them one by one with exponential backoff. This bounds the worst
 // case latency to roughly one direct attempt + one proxy round-trip, instead of potentially
 // minutes of sequential retries.
-async function retryFetch(url, options = {}) {
+export async function retryFetch(url, options = {}) {
 	const { timeout = 6000 } = options;
 	const proxyList = options.proxyList ? [...options.proxyList, ...PROXIES] : PROXIES;
 	const targets = proxyList.length ? proxyList : [null];

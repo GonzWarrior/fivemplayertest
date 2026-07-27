@@ -1,5 +1,6 @@
 import { fetchServer } from './fetch.js';
 import { initializeSearch } from './search.js';
+import { initServerSearch } from './server-search.js';
 import { initTheme } from './theme.js';
 import { initFavorites } from './favorites.js';
 import { initHistory, addToHistory } from './history.js';
@@ -20,6 +21,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 	// Initialize features
 	initializeSearch();
+	initServerSearch();
 	initTheme();
 	initFavorites();
 	initHistory();
@@ -76,7 +78,7 @@ window.addEventListener('DOMContentLoaded', () => {
 	}
 });
 
-const setId = (serverId) => {
+export const setId = (serverId) => {
 	const url = new URL(window.location.href);
 	url.searchParams.set('serverId', serverId);
 	window.history.replaceState(null, null, url);
