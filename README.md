@@ -1,12 +1,6 @@
 # fivem-player-list
 
-> [\!NOTE]  
-> Please note that this project is not currently under active development by me. While I am not personally planning to implement new features or changes, I welcome community contributions. Feel free to fork the repository and submit a pull request with your improvements. I will review all submissions as they come in.
-
 Simple website that displays all players connected to a selected server.
-Available here: [https://igorovh.github.io/fivem-player-list/](https://igorovh.github.io/fivem-player-list/)
-
-It uses the FiveM endpoint, which is also used in their UI:
 
 ```
 https://frontend.cfx-services.net/api/servers/single/serverId
