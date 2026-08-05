@@ -60,24 +60,61 @@ export async function retryFetch(url, options = {}) {
 	}
 }
 
-export const fetchServer = (serverId) => {
+// How much the reported `players` array is allowed to fall short of `Data.clients`
+// before we treat the response as an incomplete/stale snapshot rather than a real
+// reading (a couple of players connecting/leaving mid-request is normal and shouldn't
+// trigger a retry loop).
+const INCOMPLETE_PLAYERLIST_TOLERANCE = 2;
+const MAX_INCOMPLETE_RETRIES = 2;
+
+// We race several public CORS proxies (see PROXIES) and keep whichever answers first.
+// Those free proxies sometimes serve a cached or truncated copy of the response — still
+// HTTP 200, so retryFetch has no way to know it's bad. That shows up here as "some
+// players are missing/hidden", intermittently, which is exactly this check's job to catch:
+// Data.clients is the server's own live player count, independent of the players array,
+// so a mismatch means we got a bad snapshot, not that the server actually has fewer players.
+const isIncompletePlayerList = (data, players) => {
+	if (!Array.isArray(data.players)) return false; // server doesn't share the list at all — different case, handled elsewhere
+	const reportedClients = data.clients;
+	if (typeof reportedClients !== 'number') return false;
+	return reportedClients - players.length > INCOMPLETE_PLAYERLIST_TOLERANCE;
+};
+
+export const fetchServer = (serverId, retryCount = 0) => {
 	try {
 		if (!isValidServerId(serverId)) {
 			showNotification('Invalid server ID format', 'error');
 			return;
 		}
 
-		setTitle('Loading server data from FiveM API...');
+		if (retryCount === 0) setTitle('Loading server data from FiveM API...');
 
 		showLoader(true);
 
 		refreshButton.onclick = () => fetchServer(serverId);
-		const url = `${API_BASE_URL}/servers/single/${serverId}`;
-		console.info(`Fetching server info`, serverId, url);
+		// On a retry, bust the cache with a dummy query param — some proxies (e.g.
+		// allorigins.win) cache by exact URL, so an identical retry could just get served
+		// the same stale/truncated snapshot again.
+		const cacheBuster = retryCount ? `?_r=${Date.now()}` : '';
+		const url = `${API_BASE_URL}/servers/single/${serverId}${cacheBuster}`;
+		console.info(`Fetching server info`, serverId, url, retryCount ? `(retry ${retryCount})` : '');
 
 		retryFetch(url, { headers: DEFAULT_HEADERS })
 			.then(handleResponse)
 			.then((json) => {
+				const players = formatPlayers(json.Data.players);
+
+				// A proxy gave us a partial/stale player list. Instead of showing the user a
+				// server with "missing" players, silently retry a couple of times — a fresh
+				// attempt very likely lands on a different proxy (or the direct request) with
+				// the full list.
+				if (isIncompletePlayerList(json.Data, players) && retryCount < MAX_INCOMPLETE_RETRIES) {
+					console.warn(
+						`Player list looks incomplete (${players.length}/${json.Data.clients} reported) — retrying (${retryCount + 1}/${MAX_INCOMPLETE_RETRIES})`
+					);
+					return fetchServer(serverId, retryCount + 1);
+				}
+
 				setServerInfo(serverId, json.Data);
 
 				// The player list is already included in this same response — no need for a
@@ -87,9 +124,15 @@ export const fetchServer = (serverId) => {
 				// name).
 				if (!Array.isArray(json.Data.players)) {
 					showNotification('This server is not sharing its player list with the public API', 'warning');
+				} else if (isIncompletePlayerList(json.Data, players)) {
+					// Still incomplete after retries — say so instead of quietly showing a short list.
+					showNotification(
+						`Only got ${players.length} of ${json.Data.clients} players from the API after retrying — try refreshing again`,
+						'warning',
+						6000
+					);
 				}
 
-				const players = formatPlayers(json.Data.players);
 				warnIfNamesAreAnonymized(players);
 
 				// Only update if players changed
